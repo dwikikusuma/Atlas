@@ -1,0 +1,12 @@
+.idea
+.idea/
+.vscode/
+*.swp
+*.swo
+.env
+
+*.exe
+*.test
+*.out
+
+vendor/

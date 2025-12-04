@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # 1. SQL Database (Orders & Wallet)
+  postgres:
+    image: postgres:15-alpine
+    container_name: atlas_postgres
+    hostname: postgres
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlaspassword
+      POSTGRES_DB: atlas_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - atlas_net
+
+  # 2. NoSQL Database (Ride Logs & History)
+  mongo:
+    image: mongo:6.0
+    container_name: atlas_mongo
+    hostname: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - atlas_net
+
+  # 3. Cache (Geo-Spatial Tracking & Session)
+  redis:
+    image: redis:7.0-alpine
+    container_name: atlas_redis
+    hostname: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - atlas_net
+
+  # 4. Message Broker (Kafka - KRaft Mode)
+  kafka:
+    image: bitnamilegacy/kafka:latest
+    container_name: atlas_kafka
+    hostname: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # KRaft Settings
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      # Listeners
+      # 1. CONTROLLER: Internal raft voting (port 9093)
+      # 2. INTERNAL: For Docker-to-Docker (Kafka UI, Services) -> Port 9094
+      # 3. EXTERNAL: For Host-to-Docker (Go App on Laptop) -> Port 9092
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+    volumes:
+      - kafka_data:/bitnami/kafka
+    networks:
+      - atlas_net
+
+  # 5. Kafka UI (Dashboard)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: atlas_kafka_ui
+    ports:
+      - "8080:8080"
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_NAME: local
+      # Connects to the INTERNAL listener
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9094
+    depends_on:
+      - kafka
+    networks:
+      - atlas_net
+
+  # 6. Topic Creator (Run once and exit)
+  init-kafka:
+    image: bitnamilegacy/kafka:latest
+    depends_on:
+      - kafka
+    networks:
+      - atlas_net
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: >
+      "
+      echo 'Waiting for Kafka to be ready...'
+      # Check if topic list command succeeds
+      until kafka-topics.sh --bootstrap-server kafka:9094 --list; do
+        echo 'Broker not available yet... waiting 2s'
+        sleep 2
+      done
+
+      echo 'Broker is UP! Creating Atlas topics...'
+      
+      # Topic 1: High speed GPS stream (Partitioned for concurrency)
+      kafka-topics.sh --create --if-not-exists --topic driver-gps --bootstrap-server kafka:9094 --partitions 3 --replication-factor 1
+      
+      # Topic 2: Important Business Events (Orders)
+      kafka-topics.sh --create --if-not-exists --topic order-events --bootstrap-server kafka:9094 --partitions 3 --replication-factor 1
+
+      echo 'SUCCESS: Topics created.'
+      "
+
+networks:
+  atlas_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  kafka_data:
