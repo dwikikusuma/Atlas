@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package tracker;
+
+option go_package = "github.com/dwikikusuma/atlas/pkg/pb/tracker";
+
+service TrackerService {
+  rpc UpdateLocation(UpdateLocationRequest) returns (UpdateLocationResponse);
+}
+
+message UpdateLocationRequest {
+  string user_id = 1;
+  double latitude = 2;
+  double longitude = 3;
+  string timestamp = 4;
+}
+
+message UpdateLocationResponse {
+  bool success = 1;
+}

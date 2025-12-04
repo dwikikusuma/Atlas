@@ -81,7 +81,7 @@ proto:
 		--go_out=pkg/pb --go_opt=paths=source_relative \
 		--go-grpc_out=pkg/pb --go-grpc_opt=paths=source_relative \
 		tracker/tracker.proto \
-		order/order.proto \
-		wallet/wallet.proto \
-		dispatch/dispatch.proto
+#		order/order.proto \
+#		wallet/wallet.proto \
+#		dispatch/dispatch.proto
 	@echo "✅ Proto Generation Complete!"
