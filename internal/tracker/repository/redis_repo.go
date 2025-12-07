@@ -48,6 +48,7 @@ func (r *RedisClientRepo) GetNearbyDrivers(ctx context.Context, lat float64, lon
 			Count:      10,
 			Sort:       "ASC",
 		},
+		WithCoord: true,
 	}).Result()
 
 	if err != nil {
