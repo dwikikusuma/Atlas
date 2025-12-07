@@ -68,9 +68,9 @@ func main() {
 		log.Fatalf("❌ cannot create listener: %v", err)
 	}
 
+	log.Printf("🚀 Tracker gRPC server listening on %s", listener.Addr().String())
 	err = grpcServer.Serve(listener)
 	if err != nil {
 		log.Fatalf("❌ cannot start grpc server: %v", err)
 	}
-
 }

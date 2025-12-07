@@ -27,6 +27,7 @@ func (w *IngestionWorker) Run(ctx context.Context) {
 		msg, err := w.consumer.FetchMessage(ctx)
 		if err != nil {
 			log.Printf("Error fetching message: %v", err)
+			continue
 		}
 
 		var event model.LocationEvent

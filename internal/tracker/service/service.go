@@ -40,7 +40,7 @@ func (s *Server) UpdateLocation(ctx context.Context, req *tracker.UpdateLocation
 		return nil, status.Errorf(codes.Internal, "failed to marshal event: %v", err)
 	}
 
-	err = s.producer.Publish(ctx, "location-updates", req.UserId, eventByte)
+	err = s.producer.Publish(ctx, "driver-gps", req.UserId, eventByte)
 	if err != nil {
 		log.Printf("failed to publish event: %v", err)
 		return nil, status.Errorf(codes.Internal, "failed to publish event: %v", err)
