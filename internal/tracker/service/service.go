@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 
+	"github.com/dwikikusuma/atlas/internal/tracker/domain"
 	"github.com/dwikikusuma/atlas/internal/tracker/model"
 	"github.com/dwikikusuma/atlas/pkg/kafka"
 	"github.com/dwikikusuma/atlas/pkg/pb/tracker"
@@ -15,11 +16,13 @@ import (
 type Server struct {
 	tracker.UnimplementedTrackerServiceServer
 	producer kafka.EventProducer
+	repo     domain.LocationRepository
 }
 
-func NewServer(producer kafka.EventProducer) *Server {
+func NewServer(producer kafka.EventProducer, repo domain.LocationRepository) *Server {
 	return &Server{
 		producer: producer,
+		repo:     repo,
 	}
 }
 
@@ -45,4 +48,23 @@ func (s *Server) UpdateLocation(ctx context.Context, req *tracker.UpdateLocation
 	return &tracker.UpdateLocationResponse{
 		Success: true,
 	}, nil
+}
+
+func (s *Server) GetNearbyDrivers(ctx context.Context, req *tracker.GetNearbyDriverRequest) (*tracker.GetNearbyDriverResponse, error) {
+	location, err := s.repo.GetNearbyDrivers(ctx, req.Latitude, req.Longitude, req.Radius)
+	if err != nil {
+		log.Printf("failed to get nearby drivers: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get nearby drivers: %v", err)
+	}
+
+	var res []*tracker.Driver
+	for _, loc := range location {
+		res = append(res, &tracker.Driver{
+			DriverId:  loc.UserID,
+			Longitude: loc.Longitude,
+			Latitude:  loc.Latitude,
+		})
+	}
+
+	return &tracker.GetNearbyDriverResponse{Drivers: res}, nil
 }

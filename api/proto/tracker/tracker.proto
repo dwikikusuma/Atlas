@@ -6,6 +6,7 @@ option go_package = "github.com/dwikikusuma/atlas/pkg/pb/tracker";
 
 service TrackerService {
   rpc UpdateLocation(UpdateLocationRequest) returns (UpdateLocationResponse);
+  rpc GetNearbyDrivers(GetNearbyDriverRequest) returns (GetNearbyDriverResponse);
 }
 
 message UpdateLocationRequest {
@@ -17,4 +18,21 @@ message UpdateLocationRequest {
 
 message UpdateLocationResponse {
   bool success = 1;
+}
+
+message GetNearbyDriverRequest {
+  double latitude = 1;
+  double longitude = 2;
+  double radius = 3; // in kilometers
+}
+
+message Driver{
+  string driver_id = 1;
+  double latitude = 2;
+  double longitude = 3;
+  double distance = 4; // distance from the requested location
+}
+
+message GetNearbyDriverResponse {
+  repeated Driver drivers = 1;
 }

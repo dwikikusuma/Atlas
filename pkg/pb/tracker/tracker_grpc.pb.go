@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TrackerServiceClient interface {
 	UpdateLocation(ctx context.Context, in *UpdateLocationRequest, opts ...grpc.CallOption) (*UpdateLocationResponse, error)
+	GetNearbyDrivers(ctx context.Context, in *GetNearbyDriverRequest, opts ...grpc.CallOption) (*GetNearbyDriverResponse, error)
 }
 
 type trackerServiceClient struct {
@@ -42,11 +43,21 @@ func (c *trackerServiceClient) UpdateLocation(ctx context.Context, in *UpdateLoc
 	return out, nil
 }
 
+func (c *trackerServiceClient) GetNearbyDrivers(ctx context.Context, in *GetNearbyDriverRequest, opts ...grpc.CallOption) (*GetNearbyDriverResponse, error) {
+	out := new(GetNearbyDriverResponse)
+	err := c.cc.Invoke(ctx, "/tracker.TrackerService/GetNearbyDrivers", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TrackerServiceServer is the server API for TrackerService service.
 // All implementations must embed UnimplementedTrackerServiceServer
 // for forward compatibility
 type TrackerServiceServer interface {
 	UpdateLocation(context.Context, *UpdateLocationRequest) (*UpdateLocationResponse, error)
+	GetNearbyDrivers(context.Context, *GetNearbyDriverRequest) (*GetNearbyDriverResponse, error)
 	mustEmbedUnimplementedTrackerServiceServer()
 }
 
@@ -56,6 +67,9 @@ type UnimplementedTrackerServiceServer struct {
 
 func (UnimplementedTrackerServiceServer) UpdateLocation(context.Context, *UpdateLocationRequest) (*UpdateLocationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateLocation not implemented")
+}
+func (UnimplementedTrackerServiceServer) GetNearbyDrivers(context.Context, *GetNearbyDriverRequest) (*GetNearbyDriverResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNearbyDrivers not implemented")
 }
 func (UnimplementedTrackerServiceServer) mustEmbedUnimplementedTrackerServiceServer() {}
 
@@ -88,6 +102,24 @@ func _TrackerService_UpdateLocation_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TrackerService_GetNearbyDrivers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNearbyDriverRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TrackerServiceServer).GetNearbyDrivers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tracker.TrackerService/GetNearbyDrivers",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TrackerServiceServer).GetNearbyDrivers(ctx, req.(*GetNearbyDriverRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TrackerService_ServiceDesc is the grpc.ServiceDesc for TrackerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -98,6 +130,10 @@ var TrackerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateLocation",
 			Handler:    _TrackerService_UpdateLocation_Handler,
+		},
+		{
+			MethodName: "GetNearbyDrivers",
+			Handler:    _TrackerService_GetNearbyDrivers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
