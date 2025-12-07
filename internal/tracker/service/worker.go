@@ -15,9 +15,9 @@ type IngestionWorker struct {
 	repo     domain.LocationRepository
 }
 
-func NewIngestionWorker(consumer *kafka.EventConsumer, repo domain.LocationRepository) *IngestionWorker {
+func NewIngestionWorker(consumer kafka.EventConsumer, repo domain.LocationRepository) *IngestionWorker {
 	return &IngestionWorker{
-		consumer: *consumer,
+		consumer: consumer,
 		repo:     repo,
 	}
 }
