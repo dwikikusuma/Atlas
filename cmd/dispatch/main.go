@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/dwikikusuma/atlas/internal/dispatch/service"
+	"github.com/dwikikusuma/atlas/pkg/kafka"
 	"github.com/dwikikusuma/atlas/pkg/pb/dispatch"
 	"github.com/dwikikusuma/atlas/pkg/pb/tracker"
 	"google.golang.org/grpc"
@@ -15,6 +16,7 @@ import (
 const (
 	grpcPort    = ":50052"
 	trackerAddr = "localhost:50051"
+	kafkaBroker = "localhost:9092"
 )
 
 func main() {
@@ -30,8 +32,15 @@ func main() {
 		}
 	}(conn)
 
+	producer := kafka.NewProducer([]string{kafkaBroker})
+	defer func() {
+		if err := producer.Close(); err != nil {
+			log.Fatalf("could not close kafka producer: %v", err)
+		}
+	}()
+
 	trackerClient := tracker.NewTrackerServiceClient(conn)
-	srv := service.NewDispatchService(trackerClient)
+	srv := service.NewDispatchService(trackerClient, producer)
 
 	grpcServer := grpc.NewServer()
 	dispatch.RegisterDispatchServiceServer(grpcServer, srv)

@@ -20,4 +20,5 @@ message RequestRideRequest {
 message RequestRideResponse {
   string ride_id = 1;
   string status = 2; // "SEARCHING", "NO_DRIVERS_FOUND"
+  string driver_id = 3;
 }

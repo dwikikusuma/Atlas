@@ -20,6 +20,29 @@ The service enables querying for available drivers within a specific radius, uti
 * **Logic:** Executes Redis `GEORADIUS` commands to retrieve drivers sorted by proximity.
 * **Optimization:** Utilizes `GeoRadius` over `GeoSearch` to ensure broad compatibility and stability across Redis client versions.
 
+# 📡 Atlas Project - Learning Roadmap
+
+## Upcoming Services & Technical Goals
+
+### 1. Order Service (PostgreSQL)
+* **Goal:** Manage Ride Lifecycle.
+* **Tech:** PostgreSQL, GORM/SQLx.
+* **Go Fundamental:** `context.Context` (Timeouts) and `select` for handling cancellation.
+
+### 2. Gateway Service
+* **Goal:** Aggregate data for frontend.
+* **Tech:** HTTP/REST.
+* **Go Fundamental:** `sync.WaitGroup`, **Fan-Out/Fan-In** pattern to query microservices in parallel.
+
+### 3. History Service (MongoDB)
+* **Goal:** Archive high-volume GPS logs.
+* **Tech:** MongoDB (NoSQL).
+* **Go Fundamental:** **Worker Pool** pattern, Buffered **Channels** to handle write pressure.
+
+### 4. Wallet Service
+* **Goal:** Handle money safely.
+* **Tech:** Distributed Locking (Redis) or Local Locking.
+* **Go Fundamental:** `sync.Mutex` to protect shared local state (Race Conditions).
 ---
 
 ## 🛠 Architecture Overview
