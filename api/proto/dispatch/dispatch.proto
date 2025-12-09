@@ -1,1 +1,23 @@
 syntax = "proto3";
+
+package dispatch;
+
+option go_package = "github.com/dwikikusuma/atlas/pkg/pb/dispatch";
+
+service DispatchService {
+  rpc RequestRide(RequestRideRequest) returns (RequestRideResponse);
+}
+
+message RequestRideRequest {
+  string passenger_id = 1;
+  double pickup_lat = 2;
+  double pickup_long = 3;
+  double dropoff_lat = 4;
+  double dropoff_long = 5;
+  string vehicle_type = 6; // e.g., "go-car", "go-ride"
+}
+
+message RequestRideResponse {
+  string ride_id = 1;
+  string status = 2; // "SEARCHING", "NO_DRIVERS_FOUND"
+}
