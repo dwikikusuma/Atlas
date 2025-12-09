@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type TrackerServiceClient interface {
 	UpdateLocation(ctx context.Context, in *UpdateLocationRequest, opts ...grpc.CallOption) (*UpdateLocationResponse, error)
 	GetNearbyDrivers(ctx context.Context, in *GetNearbyDriverRequest, opts ...grpc.CallOption) (*GetNearbyDriverResponse, error)
+	GetDriverLocation(ctx context.Context, in *GetDriverLocationRequest, opts ...grpc.CallOption) (*GetDriverLocationResponse, error)
 }
 
 type trackerServiceClient struct {
@@ -52,12 +53,22 @@ func (c *trackerServiceClient) GetNearbyDrivers(ctx context.Context, in *GetNear
 	return out, nil
 }
 
+func (c *trackerServiceClient) GetDriverLocation(ctx context.Context, in *GetDriverLocationRequest, opts ...grpc.CallOption) (*GetDriverLocationResponse, error) {
+	out := new(GetDriverLocationResponse)
+	err := c.cc.Invoke(ctx, "/tracker.TrackerService/GetDriverLocation", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TrackerServiceServer is the server API for TrackerService service.
 // All implementations must embed UnimplementedTrackerServiceServer
 // for forward compatibility
 type TrackerServiceServer interface {
 	UpdateLocation(context.Context, *UpdateLocationRequest) (*UpdateLocationResponse, error)
 	GetNearbyDrivers(context.Context, *GetNearbyDriverRequest) (*GetNearbyDriverResponse, error)
+	GetDriverLocation(context.Context, *GetDriverLocationRequest) (*GetDriverLocationResponse, error)
 	mustEmbedUnimplementedTrackerServiceServer()
 }
 
@@ -70,6 +81,9 @@ func (UnimplementedTrackerServiceServer) UpdateLocation(context.Context, *Update
 }
 func (UnimplementedTrackerServiceServer) GetNearbyDrivers(context.Context, *GetNearbyDriverRequest) (*GetNearbyDriverResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetNearbyDrivers not implemented")
+}
+func (UnimplementedTrackerServiceServer) GetDriverLocation(context.Context, *GetDriverLocationRequest) (*GetDriverLocationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDriverLocation not implemented")
 }
 func (UnimplementedTrackerServiceServer) mustEmbedUnimplementedTrackerServiceServer() {}
 
@@ -120,6 +134,24 @@ func _TrackerService_GetNearbyDrivers_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TrackerService_GetDriverLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDriverLocationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TrackerServiceServer).GetDriverLocation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tracker.TrackerService/GetDriverLocation",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TrackerServiceServer).GetDriverLocation(ctx, req.(*GetDriverLocationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TrackerService_ServiceDesc is the grpc.ServiceDesc for TrackerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -134,6 +166,10 @@ var TrackerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetNearbyDrivers",
 			Handler:    _TrackerService_GetNearbyDrivers_Handler,
+		},
+		{
+			MethodName: "GetDriverLocation",
+			Handler:    _TrackerService_GetDriverLocation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

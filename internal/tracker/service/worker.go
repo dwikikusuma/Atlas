@@ -24,6 +24,14 @@ func NewIngestionWorker(consumer kafka.EventConsumer, repo domain.LocationReposi
 
 func (w *IngestionWorker) Run(ctx context.Context) {
 	for {
+
+		select {
+		case <-ctx.Done():
+			log.Println("Ingestion worker stopping...")
+			return
+		default:
+		}
+
 		msg, err := w.consumer.FetchMessage(ctx)
 		if err != nil {
 			log.Printf("Error fetching message: %v", err)

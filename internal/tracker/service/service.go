@@ -68,3 +68,21 @@ func (s *Server) GetNearbyDrivers(ctx context.Context, req *tracker.GetNearbyDri
 
 	return &tracker.GetNearbyDriverResponse{Drivers: res}, nil
 }
+
+func (s *Server) GetDriverLocation(ctx context.Context, req *tracker.GetDriverLocationRequest) (*tracker.GetDriverLocationResponse, error) {
+	location, err := s.repo.GetDriverLocation(ctx, req.DriverId)
+	if err != nil {
+		log.Printf("failed to get driver location: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get driver location: %v", err)
+	}
+
+	if location == nil {
+		return nil, status.Errorf(codes.NotFound, "driver location not found")
+	}
+
+	return &tracker.GetDriverLocationResponse{
+		DriverId:  location.UserID,
+		Longitude: location.Longitude,
+		Latitude:  location.Latitude,
+	}, nil
+}

@@ -4,6 +4,9 @@ import (
 	"context"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"time"
 
 	"github.com/dwikikusuma/atlas/internal/tracker/repository"
 	"github.com/dwikikusuma/atlas/internal/tracker/service"
@@ -24,7 +27,7 @@ const (
 
 func main() {
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	redisClient, err := database.NewRedisClient(database.Config{
 		Addr: redisAddr,
@@ -68,9 +71,26 @@ func main() {
 		log.Fatalf("❌ cannot create listener: %v", err)
 	}
 
-	log.Printf("🚀 Tracker gRPC server listening on %s", listener.Addr().String())
-	err = grpcServer.Serve(listener)
-	if err != nil {
-		log.Fatalf("❌ cannot start grpc server: %v", err)
-	}
+	go func() {
+		log.Printf("🚀 Tracker gRPC server listening on %s", listener.Addr().String())
+		err = grpcServer.Serve(listener)
+		if err != nil {
+			log.Fatalf("❌ cannot start grpc server: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+
+	log.Println("🛑 Shutting down server...")
+	grpcServer.GracefulStop()
+
+	cancel()
+	log.Println("✅ Server stopped")
+
+	time.Sleep(1 * time.Second)
+	log.Println("✅ Worker stopped")
+
+	log.Println("👋 Bye!")
 }
