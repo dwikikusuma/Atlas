@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - schema: "internal/order/db/migration"
+    queries: "internal/order/db/query"
+    engine: "postgresql"
+    gen:
+      go:
+        package: "db"
+        out: "internal/order/db"
+        sql_package: "database/sql"

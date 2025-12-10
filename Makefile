@@ -8,8 +8,8 @@ PROTOC_IMAGE = rvolosatovs/protoc:4.0.0
 DB_URL=postgres://atlas:atlaspassword@localhost:5432/atlas_db?sslmode=disable
 
 # Default to 'tracker' service if not specified (since it's the high-traffic one)
-SERVICE ?= tracker
-MIGRATION_PATH=internal/$(SERVICE)/db/migration
+service ?= tracker
+MIGRATION_PATH=internal/$(service)/db/migration
 
 # ==============================================================================
 # COMMANDS
@@ -43,20 +43,20 @@ clean:
 # ==============================================================================
 # Usage: make migrate-create name=init_schema service=tracker
 migrate-create:
-	@echo "📁 Creating migration files for [$(SERVICE)]..."
+	@echo "📁 Creating migration files for [$(service)]..."
 	@mkdir -p $(MIGRATION_PATH)
 	docker run --rm -v $(CURDIR)/$(MIGRATION_PATH):/migrations --network host migrate/migrate \
 		create -ext sql -dir /migrations -seq $(name)
 
 # Usage: make migrate-up service=tracker
 migrate-up:
-	@echo "🚀 Running Migrations Up for [$(SERVICE)]..."
+	@echo "🚀 Running Migrations Up for [$(service)]..."
 	docker run --rm -v $(CURDIR)/$(MIGRATION_PATH):/migrations --network host migrate/migrate \
 		-path=/migrations/ -database "$(DB_URL)" up
 
 # Usage: make migrate-down service=tracker
 migrate-down:
-	@echo "🔙 Running Migrations Down for [$(SERVICE)]..."
+	@echo "🔙 Running Migrations Down for [$(service)]..."
 	docker run --rm -v $(CURDIR)/$(MIGRATION_PATH):/migrations --network host migrate/migrate \
 		-path=/migrations/ -database "$(DB_URL)" down 1
 
@@ -66,9 +66,13 @@ migrate-down:
 
 # Generates SQLC for ALL services defined in sqlc.yaml
 # We use the Docker container to ensure everyone uses the same version
+#sqlc:
+#	@echo "🤖 Generating SQLC code..."
+#	docker run --rm -v $(CURDIR):/src -w /src kjconroy/sqlc generate
+#	@echo "✅ SQLC Generation Complete!"
 sqlc:
 	@echo "🤖 Generating SQLC code..."
-	docker run --rm -v $(CURDIR):/src -w /src kjconroy/sqlc generate
+	@sqlc generate
 	@echo "✅ SQLC Generation Complete!"
 
 # Generates Protobufs
