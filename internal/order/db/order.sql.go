@@ -21,20 +21,20 @@ INSERT INTO orders (
 `
 
 type CreateOrderParams struct {
-	ID          string
-	PassengerID string
-	DriverID    string
-	PickupLat   float64
-	PickupLong  float64
-	DropoffLat  float64
-	DropoffLong float64
-	Status      string
-	Price       float64
+	ID          string  `json:"id"`
+	PassengerID string  `json:"passenger_id"`
+	DriverID    string  `json:"driver_id"`
+	PickupLat   float64 `json:"pickup_lat"`
+	PickupLong  float64 `json:"pickup_long"`
+	DropoffLat  float64 `json:"dropoff_lat"`
+	DropoffLong float64 `json:"dropoff_long"`
+	Status      string  `json:"status"`
+	Price       float64 `json:"price"`
 }
 
 // internal/order/db/query/order.sql
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
-	row := q.db.QueryRowContext(ctx, createOrder,
+	row := q.db.QueryRow(ctx, createOrder,
 		arg.ID,
 		arg.PassengerID,
 		arg.DriverID,
@@ -68,7 +68,7 @@ WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetOrder(ctx context.Context, id string) (Order, error) {
-	row := q.db.QueryRowContext(ctx, getOrder, id)
+	row := q.db.QueryRow(ctx, getOrder, id)
 	var i Order
 	err := row.Scan(
 		&i.ID,
@@ -93,12 +93,12 @@ WHERE id = $1
 `
 
 type UpdateOrderDriverParams struct {
-	ID       string
-	DriverID string
+	ID       string `json:"id"`
+	DriverID string `json:"driver_id"`
 }
 
 func (q *Queries) UpdateOrderDriver(ctx context.Context, arg UpdateOrderDriverParams) error {
-	_, err := q.db.ExecContext(ctx, updateOrderDriver, arg.ID, arg.DriverID)
+	_, err := q.db.Exec(ctx, updateOrderDriver, arg.ID, arg.DriverID)
 	return err
 }
 
@@ -109,11 +109,11 @@ WHERE id = $1
 `
 
 type UpdateOrderStatusParams struct {
-	ID     string
-	Status string
+	ID     string `json:"id"`
+	Status string `json:"status"`
 }
 
 func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) error {
-	_, err := q.db.ExecContext(ctx, updateOrderStatus, arg.ID, arg.Status)
+	_, err := q.db.Exec(ctx, updateOrderStatus, arg.ID, arg.Status)
 	return err
 }

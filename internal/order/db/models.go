@@ -5,19 +5,19 @@
 package db
 
 import (
-	"time"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Order struct {
-	ID          string
-	PassengerID string
-	DriverID    string
-	PickupLat   float64
-	PickupLong  float64
-	DropoffLat  float64
-	DropoffLong float64
-	Status      string
-	Price       float64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          string             `json:"id"`
+	PassengerID string             `json:"passenger_id"`
+	DriverID    string             `json:"driver_id"`
+	PickupLat   float64            `json:"pickup_lat"`
+	PickupLong  float64            `json:"pickup_long"`
+	DropoffLat  float64            `json:"dropoff_lat"`
+	DropoffLong float64            `json:"dropoff_long"`
+	Status      string             `json:"status"`
+	Price       float64            `json:"price"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
