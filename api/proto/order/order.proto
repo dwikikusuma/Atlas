@@ -1,1 +1,23 @@
 syntax = "proto3";
+
+package order;
+
+option go_package = "github.com/dwikikusuma/atlas/pkg/pb/order";
+
+service OrderService {
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+}
+
+message CreateOrderRequest {
+  string user_id = 1;
+  string driver_id = 2;
+  string pickup_location = 3;
+  string dropoff_location = 4;
+  double fare = 5;
+  string timestamp = 6;
+}
+
+message CreateOrderResponse {
+  string order_id = 1;
+  bool success = 2;
+}
