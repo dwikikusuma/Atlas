@@ -44,6 +44,8 @@ func (s *Service) CreateOrder(ctx context.Context, req *order.CreateOrderRequest
 
 	return &order.CreateOrderResponse{
 		OrderId: orderDetail.ID.String(),
+		Status:  orderDetail.Status,
+		Price:   orderDetail.Price,
 	}, nil
 }
 
