@@ -7,6 +7,7 @@ import (
 
 	"github.com/dwikikusuma/atlas/internal/order/db"
 	"github.com/dwikikusuma/atlas/pkg/pb/order"
+	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -46,6 +47,38 @@ func (s *Service) CreateOrder(ctx context.Context, req *order.CreateOrderRequest
 		OrderId: orderDetail.ID.String(),
 		Status:  orderDetail.Status,
 		Price:   orderDetail.Price,
+	}, nil
+}
+
+func (s *Service) GetOrder(ctx context.Context, req *order.GetOrderRequest) (*order.GetOrderResponse, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var orderID pgtype.UUID
+	err := orderID.Scan(req.OrderId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid order ID")
+	}
+
+	orderDetail, err := s.store.GetOrder(dbCtx, orderID)
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return nil, status.Errorf(codes.NotFound, "order not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get order: %v", err)
+	}
+
+	return &order.GetOrderResponse{
+		OrderId:     orderDetail.ID.String(),
+		PassengerId: orderDetail.PassengerID,
+		DriverId:    orderDetail.DriverID,
+		PickupLat:   orderDetail.PickupLat,
+		PickupLong:  orderDetail.PickupLong,
+		DropoffLat:  orderDetail.DropoffLat,
+		DropoffLong: orderDetail.DropoffLong,
+		Status:      orderDetail.Status,
+		Price:       orderDetail.Price,
+		CreatedAt:   orderDetail.CreatedAt.Time.String(),
 	}, nil
 }
 

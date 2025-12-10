@@ -6,6 +6,7 @@ option go_package = "github.com/dwikikusuma/atlas/pkg/pb/order";
 
 service OrderService {
   rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
 }
 
 message CreateOrderRequest {
@@ -21,4 +22,21 @@ message CreateOrderResponse {
   string order_id = 1;
   string status = 2;
   double price = 3;
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message GetOrderResponse {
+  string order_id = 1;
+  string passenger_id = 2;
+  string driver_id = 3;
+  double pickup_lat = 4;
+  double pickup_long = 5;
+  double dropoff_lat = 6;
+  double dropoff_long = 7;
+  string status = 8;
+  double price = 9;
+  string created_at = 10; // Send as string ISO8601
 }
