@@ -9,7 +9,7 @@ import (
 )
 
 type Order struct {
-	ID          string             `json:"id"`
+	ID          pgtype.UUID        `json:"id"`
 	PassengerID string             `json:"passenger_id"`
 	DriverID    string             `json:"driver_id"`
 	PickupLat   float64            `json:"pickup_lat"`

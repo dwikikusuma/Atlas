@@ -10,14 +10,15 @@ service OrderService {
 
 message CreateOrderRequest {
   string user_id = 1;
-  string driver_id = 2;
-  string pickup_location = 3;
-  string dropoff_location = 4;
-  double fare = 5;
-  string timestamp = 6;
+
+  double pickup_long = 2;
+  double pickup_lat = 3;
+  double dropoff_long = 4;
+  double dropoff_lat = 5;
 }
 
 message CreateOrderResponse {
   string order_id = 1;
-  bool success = 2;
+  string status = 2;
+  double price = 3;
 }

@@ -2,11 +2,11 @@
 
 -- name: CreateOrder :one
 INSERT INTO orders (
-    id, passenger_id, driver_id,
+    passenger_id, driver_id,
     pickup_lat, pickup_long, dropoff_lat, dropoff_long,
     status, price
 ) VALUES (
-             $1, $2, $3, $4, $5, $6, $7, $8, $9
+             $1, $2, $3, $4, $5, $6, $7, $8
          ) RETURNING *;
 
 -- name: GetOrder :one

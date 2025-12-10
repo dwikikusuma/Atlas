@@ -1,10 +1,10 @@
 -- internal/order/db/migration/000001_init_schema.sql
-
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE orders
 (
-    id           VARCHAR(50) PRIMARY KEY,   -- We use string IDs like "RIDE-123"
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     passenger_id VARCHAR(50)      NOT NULL,
-    driver_id    VARCHAR(50)      NOT NULL,
+    driver_id    VARCHAR(50),
     pickup_lat   DOUBLE PRECISION NOT NULL,
     pickup_long  DOUBLE PRECISION NOT NULL,
     dropoff_lat  DOUBLE PRECISION NOT NULL,

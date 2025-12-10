@@ -60,6 +60,11 @@ migrate-down:
 	docker run --rm -v $(CURDIR)/$(MIGRATION_PATH):/migrations --network host migrate/migrate \
 		-path=/migrations/ -database "$(DB_URL)" down 1
 
+# Usage: make migrate-force service=order version=1
+migrate-force:
+	@echo "⚠️ Forcing migration version to [$(version)] for [$(service)]..."
+	docker run --rm -v $(CURDIR)/$(MIGRATION_PATH):/migrations --network host migrate/migrate \
+	   -path=/migrations/ -database "$(DB_URL)" force $(version)
 # ==============================================================================
 # 2. CODE GENERATION (SQLC & Proto)
 # ==============================================================================

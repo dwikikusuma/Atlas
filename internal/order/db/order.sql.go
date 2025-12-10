@@ -7,21 +7,22 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createOrder = `-- name: CreateOrder :one
 
 INSERT INTO orders (
-    id, passenger_id, driver_id,
+    passenger_id, driver_id,
     pickup_lat, pickup_long, dropoff_lat, dropoff_long,
     status, price
 ) VALUES (
-             $1, $2, $3, $4, $5, $6, $7, $8, $9
+             $1, $2, $3, $4, $5, $6, $7, $8
          ) RETURNING id, passenger_id, driver_id, pickup_lat, pickup_long, dropoff_lat, dropoff_long, status, price, created_at, updated_at
 `
 
 type CreateOrderParams struct {
-	ID          string  `json:"id"`
 	PassengerID string  `json:"passenger_id"`
 	DriverID    string  `json:"driver_id"`
 	PickupLat   float64 `json:"pickup_lat"`
@@ -35,7 +36,6 @@ type CreateOrderParams struct {
 // internal/order/db/query/order.sql
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
 	row := q.db.QueryRow(ctx, createOrder,
-		arg.ID,
 		arg.PassengerID,
 		arg.DriverID,
 		arg.PickupLat,
@@ -67,7 +67,7 @@ SELECT id, passenger_id, driver_id, pickup_lat, pickup_long, dropoff_lat, dropof
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetOrder(ctx context.Context, id string) (Order, error) {
+func (q *Queries) GetOrder(ctx context.Context, id pgtype.UUID) (Order, error) {
 	row := q.db.QueryRow(ctx, getOrder, id)
 	var i Order
 	err := row.Scan(
@@ -93,8 +93,8 @@ WHERE id = $1
 `
 
 type UpdateOrderDriverParams struct {
-	ID       string `json:"id"`
-	DriverID string `json:"driver_id"`
+	ID       pgtype.UUID `json:"id"`
+	DriverID string      `json:"driver_id"`
 }
 
 func (q *Queries) UpdateOrderDriver(ctx context.Context, arg UpdateOrderDriverParams) error {
@@ -109,8 +109,8 @@ WHERE id = $1
 `
 
 type UpdateOrderStatusParams struct {
-	ID     string `json:"id"`
-	Status string `json:"status"`
+	ID     pgtype.UUID `json:"id"`
+	Status string      `json:"status"`
 }
 
 func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) error {
