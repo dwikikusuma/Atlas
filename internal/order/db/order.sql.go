@@ -23,14 +23,14 @@ INSERT INTO orders (
 `
 
 type CreateOrderParams struct {
-	PassengerID string  `json:"passenger_id"`
-	DriverID    string  `json:"driver_id"`
-	PickupLat   float64 `json:"pickup_lat"`
-	PickupLong  float64 `json:"pickup_long"`
-	DropoffLat  float64 `json:"dropoff_lat"`
-	DropoffLong float64 `json:"dropoff_long"`
-	Status      string  `json:"status"`
-	Price       float64 `json:"price"`
+	PassengerID string      `json:"passenger_id"`
+	DriverID    pgtype.Text `json:"driver_id"`
+	PickupLat   float64     `json:"pickup_lat"`
+	PickupLong  float64     `json:"pickup_long"`
+	DropoffLat  float64     `json:"dropoff_lat"`
+	DropoffLong float64     `json:"dropoff_long"`
+	Status      string      `json:"status"`
+	Price       float64     `json:"price"`
 }
 
 // internal/order/db/query/order.sql
@@ -94,7 +94,7 @@ WHERE id = $1
 
 type UpdateOrderDriverParams struct {
 	ID       pgtype.UUID `json:"id"`
-	DriverID string      `json:"driver_id"`
+	DriverID pgtype.Text `json:"driver_id"`
 }
 
 func (q *Queries) UpdateOrderDriver(ctx context.Context, arg UpdateOrderDriverParams) error {

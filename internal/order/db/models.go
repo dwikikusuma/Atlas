@@ -11,7 +11,7 @@ import (
 type Order struct {
 	ID          pgtype.UUID        `json:"id"`
 	PassengerID string             `json:"passenger_id"`
-	DriverID    string             `json:"driver_id"`
+	DriverID    pgtype.Text        `json:"driver_id"`
 	PickupLat   float64            `json:"pickup_lat"`
 	PickupLong  float64            `json:"pickup_long"`
 	DropoffLat  float64            `json:"dropoff_lat"`

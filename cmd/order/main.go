@@ -10,14 +10,18 @@ import (
 	"github.com/dwikikusuma/atlas/internal/order/db"
 	"github.com/dwikikusuma/atlas/internal/order/service"
 	"github.com/dwikikusuma/atlas/pkg/database"
+	"github.com/dwikikusuma/atlas/pkg/kafka"
 	"github.com/dwikikusuma/atlas/pkg/pb/order"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 const (
-	postgresURI = "postgres://atlas:atlaspassword@localhost:5432/atlas_db?sslmode=disable"
-	grpcPort    = ":50052"
+	postgresURI   = "postgres://atlas:atlaspassword@localhost:5432/atlas_db?sslmode=disable"
+	grpcPort      = ":50052"
+	kafkaBroker   = "localhost:9092"
+	dispatchTopic = "ride-dispatch"
+	dispatchGroup = "order-service-group"
 )
 
 func main() {
@@ -44,6 +48,14 @@ func main() {
 	grpcServer := grpc.NewServer()
 	order.RegisterOrderServiceServer(grpcServer, svc)
 	reflection.Register(grpcServer)
+
+	dispatchConsumer := kafka.NewConsumer([]string{kafkaBroker}, dispatchGroup, dispatchTopic)
+	setDriverConsumer := service.NewOrderWorker(dispatchConsumer, sqlcDB)
+	go func() {
+		if err = setDriverConsumer.Start(ctx); err != nil {
+			log.Fatalf("❌ order worker failed: %v", err)
+		}
+	}()
 
 	listener, err := net.Listen("tcp", grpcPort)
 	if err != nil {

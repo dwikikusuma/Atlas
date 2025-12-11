@@ -71,7 +71,7 @@ func (s *Service) GetOrder(ctx context.Context, req *order.GetOrderRequest) (*or
 	return &order.GetOrderResponse{
 		OrderId:     orderDetail.ID.String(),
 		PassengerId: orderDetail.PassengerID,
-		DriverId:    orderDetail.DriverID,
+		DriverId:    orderDetail.DriverID.String,
 		PickupLat:   orderDetail.PickupLat,
 		PickupLong:  orderDetail.PickupLong,
 		DropoffLat:  orderDetail.DropoffLat,
