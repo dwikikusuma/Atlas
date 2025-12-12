@@ -1,68 +1,72 @@
 # 📡 Atlas Tracker Service
 
-**Status:** Functional Core Complete (Ingestion & Search)
-**Date:** December 07, 2025
+**Status:** Functional Core Complete (Tracker & Order)
+**Date:** December 12, 2025
 
 ## ✅ Implemented Features
 
-The functional core of the Tracker Service has been successfully implemented, covering both the high-throughput "Write Path" (Ingestion) and the primary "Read Path" (Geospatial Search).
+The functional core of the Atlas system now includes both the Geospatial Tracker and the Order Management System.
 
-### 1. Ingestion Pipeline (Write Path)
+### 1. Ingestion Pipeline (Tracker Service)
 The service handles high-throughput driver location updates using an asynchronous event-driven architecture.
-* **gRPC Handler:** Accepts `UpdateLocation` requests from client applications.
-* **Kafka Producer:** Publishes events to the `driver-gps` topic, decoupling ingestion from storage processing.
-* **Kafka Consumer:** A dedicated background worker consumes events from the topic.
-* **Storage:** Persists location data to Redis using Geospatial commands (`GEOADD`).
+* **gRPC Handler:** Accepts `UpdateLocation` requests.
+* **Kafka Producer:** Publishes events to the `driver-gps` topic.
+* **Kafka Consumer:** Background worker persists data to Redis (`GEOADD`).
 
-### 2. Nearby Search (Read Path)
-The service enables querying for available drivers within a specific radius, utilizing Redis's geospatial engine.
-* **gRPC Handler:** `GetNearbyDrivers`.
+### 2. Nearby Search (Tracker Service)
+Enables querying for available drivers within a specific radius.
 * **Logic:** Executes Redis `GEORADIUS` commands to retrieve drivers sorted by proximity.
-* **Optimization:** Utilizes `GeoRadius` over `GeoSearch` to ensure broad compatibility and stability across Redis client versions.
+
+### 3. Order Management (Order Service)
+Manages the end-to-end lifecycle of a ride, ensuring consistency and handling distributed driver matching.
+* **Ride Lifecycle:** Manages the state machine: `CREATED` → `MATCHED` → `STARTED` → `FINISHED`.
+* **Dispatch Integration:** Triggers asynchronous driver discovery via Kafka (`ride-dispatch`) and handles worker-based driver assignment.
+* **Storage:** PostgreSQL (pgx/v5) with SQLC for type-safe database interactions.
+* **Key Pattern:** Implements the **Transactional Outbox** concept (via Kafka) to decouple order creation from driver matching.
+
+---
 
 # 📡 Atlas Project - Learning Roadmap
 
 ## Upcoming Services & Technical Goals
 
-### 1. Order Service (PostgreSQL)
-* **Goal:** Manage Ride Lifecycle.
-* **Tech:** PostgreSQL, GORM/SQLx.
-* **Go Fundamental:** `context.Context` (Timeouts) and `select` for handling cancellation.
-
-### 2. Gateway Service
+### 1. Gateway Service (Next)
 * **Goal:** Aggregate data for frontend.
 * **Tech:** HTTP/REST.
 * **Go Fundamental:** `sync.WaitGroup`, **Fan-Out/Fan-In** pattern to query microservices in parallel.
 
-### 3. History Service (MongoDB)
+### 2. History Service (MongoDB)
 * **Goal:** Archive high-volume GPS logs.
 * **Tech:** MongoDB (NoSQL).
 * **Go Fundamental:** **Worker Pool** pattern, Buffered **Channels** to handle write pressure.
 
-### 4. Wallet Service
+### 3. Wallet Service
 * **Goal:** Handle money safely.
 * **Tech:** Distributed Locking (Redis) or Local Locking.
 * **Go Fundamental:** `sync.Mutex` to protect shared local state (Race Conditions).
+
 ---
 
 ## 🛠 Architecture Overview
 
 ```mermaid
 sequenceDiagram
-    participant Driver
-    participant gRPC_Server
+    participant Client
+    participant Order_Svc
     participant Kafka
-    participant Worker
-    participant Redis
+    participant Dispatch_Svc
+    participant Tracker_Svc
 
-    Driver->>gRPC_Server: UpdateLocation(lat, long)
-    gRPC_Server->>Kafka: Produce "driver-gps"
-    gRPC_Server-->>Driver: 200 OK (Ack)
+    Client->>Order_Svc: CreateOrder()
+    Order_Svc->>Postgres: INSERT (Status: CREATED)
     
-    loop Background Worker
-        Worker->>Kafka: Fetch Message
-        Kafka-->>Worker: LocationEvent
-        Worker->>Redis: GEOADD atlas:tracker:positions
+    Client->>Dispatch_Svc: RequestRide(OrderID)
+    Dispatch_Svc->>Tracker_Svc: GetNearbyDrivers()
+    Tracker_Svc-->>Dispatch_Svc: [DriverID]
+    
+    Dispatch_Svc->>Kafka: Publish "RideDispatched" (Key: OrderID)
+    
+    loop Order Worker
+        Kafka->>Order_Svc: Consume Event
+        Order_Svc->>Postgres: UPDATE (Status: MATCHED, DriverID)
     end
-
-    Note over Redis: Data is indexed and searchable via GeoRadius
