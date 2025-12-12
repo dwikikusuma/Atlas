@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net"
+	"os"
+	"os/signal"
 
 	"github.com/dwikikusuma/atlas/internal/dispatch/service"
 	"github.com/dwikikusuma/atlas/pkg/kafka"
@@ -14,7 +16,7 @@ import (
 )
 
 const (
-	grpcPort    = ":50052"
+	grpcPort    = ":50053"
 	trackerAddr = "localhost:50051"
 	kafkaBroker = "localhost:9092"
 )
@@ -50,8 +52,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = grpcServer.Serve(listener)
-	if err != nil {
-		panic(err)
-	}
+
+	go func() {
+		log.Println("🚀 Dispatch Service is running on port", grpcPort)
+		err = grpcServer.Serve(listener)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	log.Println("Shutting down Dispatch Service...")
+	grpcServer.GracefulStop()
+	log.Println("Dispatch Service stopped.")
 }

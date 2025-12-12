@@ -13,11 +13,11 @@ import (
 )
 
 type OrderWorker struct {
-	consumer *kafka.Consumer
+	consumer kafka.EventConsumer
 	store    db.Querier
 }
 
-func NewOrderWorker(consumer *kafka.Consumer, store db.Querier) *OrderWorker {
+func NewOrderWorker(consumer kafka.EventConsumer, store db.Querier) *OrderWorker {
 	return &OrderWorker{
 		consumer: consumer,
 		store:    store,

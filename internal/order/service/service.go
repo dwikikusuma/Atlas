@@ -82,6 +82,32 @@ func (s *Service) GetOrder(ctx context.Context, req *order.GetOrderRequest) (*or
 	}, nil
 }
 
+func (s *Service) UpdateOrderStatus(ctx context.Context, req *order.UpdateOrderStatusRequest) (*order.UpdateOrderStatusResponse, error) {
+	if req.Status != "STARTED" && req.Status != "FINISHED" {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid status: %s", req.Status)
+	}
+
+	var orderID pgtype.UUID
+	if err := orderID.Scan(req.OrderId); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid order ID")
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	args := db.UpdateOrderStatusParams{
+		ID:     orderID,
+		Status: req.Status,
+	}
+	if err := s.store.UpdateOrderStatus(dbCtx, args); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &order.UpdateOrderStatusResponse{
+		OrderId:   orderID.String(),
+		Status:    req.Status,
+		UpdatedAt: time.Now().UTC().String(),
+	}, nil
+}
+
 func calculatePrice(lat1, lon1, lat2, lon2 float64) float64 {
 	// 1. Calculate Distance (Euclidean approximation for short distances)
 	// In production, use the Haversine formula for better accuracy.

@@ -50,7 +50,7 @@ func (s *DispatchService) RequestRide(ctx context.Context, req *dispatch.Request
 		selectedDriverId = res.Drivers[0].DriverId
 
 		msg := model.RideDispatchedEvent{
-			RideID:      "RIDE" + req.PassengerId,
+			RideID:      req.PassengerId,
 			PassengerID: req.PassengerId,
 			DriverID:    selectedDriverId,
 			PickupLat:   req.PickupLat,
@@ -71,7 +71,7 @@ func (s *DispatchService) RequestRide(ctx context.Context, req *dispatch.Request
 
 	return &dispatch.RequestRideResponse{
 		Status:   searchStatus,
-		RideId:   "RIDE" + req.PassengerId,
+		RideId:   req.PassengerId,
 		DriverId: selectedDriverId,
 	}, nil
 }
