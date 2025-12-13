@@ -1,72 +1,214 @@
 # 📡 Atlas Tracker Service
 
-**Status:** Functional Core Complete (Tracker & Order)
-**Date:** December 12, 2025
+**Status:** 🎯 Core Microservices Complete (Order, Tracker, Dispatch & Gateway)
+**Date:** December 13, 2025
 
-## ✅ Implemented Features
+## ✅ Implemented Services
 
-The functional core of the Atlas system now includes both the Geospatial Tracker and the Order Management System.
+The Atlas platform now has four core microservices fully functional, enabling end-to-end ride matching and tracking.
 
-### 1. Ingestion Pipeline (Tracker Service)
-The service handles high-throughput driver location updates using an asynchronous event-driven architecture.
-* **gRPC Handler:** Accepts `UpdateLocation` requests.
-* **Kafka Producer:** Publishes events to the `driver-gps` topic.
-* **Kafka Consumer:** Background worker persists data to Redis (`GEOADD`).
+### 1. 🚗 Tracker Service (gRPC: 50051)
+High-throughput driver location tracking with geospatial queries.
+* **Location Ingestion:** gRPC handler accepts `UpdateLocation` requests from drivers.
+* **Async Processing:** Kafka consumer (`driver-gps` topic) persists locations to Redis using `GEOADD` commands.
+* **Nearby Search:** Redis `GEORADIUS` queries find available drivers within a 5km radius.
+* **Tech Stack:** Redis (geospatial), Kafka (async), gRPC.
 
-### 2. Nearby Search (Tracker Service)
-Enables querying for available drivers within a specific radius.
-* **Logic:** Executes Redis `GEORADIUS` commands to retrieve drivers sorted by proximity.
+### 2. 📋 Order Service (gRPC: 50052)
+End-to-end ride lifecycle management with state machine consistency.
+* **Ride Lifecycle:** State transitions: `CREATED` → `MATCHED` → `STARTED` → `FINISHED`.
+* **Persistent Storage:** PostgreSQL with SQLC for type-safe database operations.
+* **Event-Driven Architecture:** Implements **Transactional Outbox** pattern via Kafka (`ride-dispatch` topic).
+* **Driver Matching:** Kafka consumer listens for dispatch events and updates order status with assigned driver.
+* **Tech Stack:** PostgreSQL, Kafka, gRPC, SQLC.
 
-### 3. Order Management (Order Service)
-Manages the end-to-end lifecycle of a ride, ensuring consistency and handling distributed driver matching.
-* **Ride Lifecycle:** Manages the state machine: `CREATED` → `MATCHED` → `STARTED` → `FINISHED`.
-* **Dispatch Integration:** Triggers asynchronous driver discovery via Kafka (`ride-dispatch`) and handles worker-based driver assignment.
-* **Storage:** PostgreSQL (pgx/v5) with SQLC for type-safe database interactions.
-* **Key Pattern:** Implements the **Transactional Outbox** concept (via Kafka) to decouple order creation from driver matching.
+### 3. 🎯 Dispatch Service (gRPC: 50053)
+Intelligent driver matching and ride request coordination.
+* **Ride Request Handler:** Receives customer ride requests and queries nearby drivers from Tracker.
+* **Driver Selection:** Selects the closest available driver (index 0 = nearest).
+* **Event Publishing:** Publishes `RideDispatchedEvent` to Kafka for asynchronous order updates.
+* **Response Handling:** Returns driver assignment status (`DRIVERS_FOUND` or `DRIVERS_NOT_FOUND`).
+* **Tech Stack:** gRPC, Kafka, HTTP gateway communication.
+
+### 4. 🌐 Gateway Service (HTTP: 8085)
+API aggregation layer providing REST endpoints for customers and drivers.
+
+**Customer Endpoints:**
+* `POST /customer/order` - Create a new ride order.
+* `POST /customer/ride/request` - Request a ride and trigger driver matching.
+* `GET /customer/order?id={orderId}` - Retrieve order status and details.
+
+**Driver Endpoints:**
+* `POST /driver/location` - Update driver's current location (triggers Tracker service).
+* `PUT /driver/order/status` - Update ride status (e.g., `STARTED`, `FINISHED`).
+
+**Tech Stack:** HTTP/REST with JSON, gRPC clients for service communication, parallel service queries.
 
 ---
 
-# 📡 Atlas Project - Learning Roadmap
+## 🔄 System Flow
 
-## Upcoming Services & Technical Goals
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Customer Request Flow                         │
+└─────────────────────────────────────────────────────────────────┘
 
-### 1. Gateway Service (Next)
-* **Goal:** Aggregate data for frontend.
-* **Tech:** HTTP/REST.
-* **Go Fundamental:** `sync.WaitGroup`, **Fan-Out/Fan-In** pattern to query microservices in parallel.
+1. Customer POST /customer/order
+   ↓
+   Gateway → Order Service (CreateOrder)
+   ↓
+   Order Service → PostgreSQL (INSERT, status: CREATED)
+   ↓
+   Response: Order created
 
-### 2. History Service (MongoDB)
-* **Goal:** Archive high-volume GPS logs.
-* **Tech:** MongoDB (NoSQL).
-* **Go Fundamental:** **Worker Pool** pattern, Buffered **Channels** to handle write pressure.
+2. Customer POST /customer/ride/request  
+   ↓
+   Gateway → Dispatch Service (RequestRide)
+   ↓
+   Dispatch Service → Tracker Service (GetNearbyDrivers)
+   ↓
+   Tracker Service → Redis (GEORADIUS query)
+   ↓
+   Dispatch Service → Kafka (Publish RideDispatchedEvent)
+   ↓
+   Order Service (Consumer) → PostgreSQL (UPDATE status: MATCHED, driver_id)
+   ↓
+   Response: Ride matched with driver
 
-### 3. Wallet Service
-* **Goal:** Handle money safely.
-* **Tech:** Distributed Locking (Redis) or Local Locking.
-* **Go Fundamental:** `sync.Mutex` to protect shared local state (Race Conditions).
+3. Customer GET /customer/order?id={orderId}
+   ↓
+   Gateway → Order Service (GetOrder)
+   ↓
+   Response: Current order status and driver details
+
+┌─────────────────────────────────────────────────────────────────┐
+│                     Driver Update Flow                           │
+└─────────────────────────────────────────────────────────────────┘
+
+1. Driver POST /driver/location (lat, long)
+   ↓
+   Gateway → Tracker Service (UpdateLocation)
+   ↓
+   Tracker Service → Kafka (Publish driver location event)
+   ↓
+   Kafka Consumer → Redis (GEOADD - update driver position)
+   ↓
+   Response: Location updated
+
+2. Driver PUT /driver/order/status (orderId, status)
+   ↓
+   Gateway → Order Service (UpdateOrderStatus)
+   ↓
+   Order Service → PostgreSQL (UPDATE order status)
+   ↓
+   Response: Status updated
+```
 
 ---
 
 ## 🛠 Architecture Overview
 
 ```mermaid
-sequenceDiagram
-    participant Client
-    participant Order_Svc
-    participant Kafka
-    participant Dispatch_Svc
-    participant Tracker_Svc
-
-    Client->>Order_Svc: CreateOrder()
-    Order_Svc->>Postgres: INSERT (Status: CREATED)
-    
-    Client->>Dispatch_Svc: RequestRide(OrderID)
-    Dispatch_Svc->>Tracker_Svc: GetNearbyDrivers()
-    Tracker_Svc-->>Dispatch_Svc: [DriverID]
-    
-    Dispatch_Svc->>Kafka: Publish "RideDispatched" (Key: OrderID)
-    
-    loop Order Worker
-        Kafka->>Order_Svc: Consume Event
-        Order_Svc->>Postgres: UPDATE (Status: MATCHED, DriverID)
+graph TB
+    subgraph "Frontend & Gateway"
+        CUSTOMER["👤 Customer App"]
+        DRIVER["🚗 Driver App"]
+        GATEWAY["🌐 HTTP Gateway:8085"]
     end
+    
+    subgraph "Core Services"
+        ORDER["📋 Order Service:50052"]
+        DISPATCH["🎯 Dispatch Service:50053"]
+        TRACKER["📍 Tracker Service:50051"]
+    end
+    
+    subgraph "Data Layer"
+        POSTGRES["🗄️ PostgreSQL"]
+        REDIS["📊 Redis Geo"]
+        KAFKA["📨 Kafka Broker"]
+    end
+    
+    CUSTOMER -->|REST| GATEWAY
+    DRIVER -->|REST| GATEWAY
+    
+    GATEWAY -->|gRPC| ORDER
+    GATEWAY -->|gRPC| DISPATCH
+    GATEWAY -->|gRPC| TRACKER
+    
+    ORDER -->|Store/Query| POSTGRES
+    ORDER -->|Consume| KAFKA
+    
+    DISPATCH -->|Query| TRACKER
+    DISPATCH -->|Publish| KAFKA
+    
+    TRACKER -->|Publish| KAFKA
+    TRACKER -->|GEOADD/GEORADIUS| REDIS
+```
+
+---
+
+## 📦 Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| **Services Communication** | gRPC, HTTP/REST |
+| **HTTP Server** | Go `net/http` |
+| **Database** | PostgreSQL (pgx/v5) with SQLC |
+| **Geospatial Index** | Redis Geo |
+| **Message Queue** | Apache Kafka |
+| **Proto Compiler** | protoc (gRPC) |
+
+---
+
+## 📚 Learning Roadmap - Design Patterns Checkpoint
+
+This project is structured as a learning journey through distributed systems patterns and Go fundamentals.
+
+### ✅ Completed
+| Service | Design Pattern | Go Fundamental |
+|---------|---|---|
+| **Tracker** | Event-Driven (Kafka) + Async Processing | Goroutines, Channels |
+| **Order** | Transactional Outbox + State Machine | Database Transactions, Concurrency |
+| **Dispatch** | Service Mesh Orchestration | gRPC, Client Connections |
+| **Gateway** | API Aggregation + Fan-Out Pattern | `sync.WaitGroup`, Parallel Queries |
+
+### 🚧 Upcoming
+
+#### 1. History Service (MongoDB)
+* **Design Pattern:** Worker Pool + Buffered Channel
+* **Goal:** Archive high-volume GPS logs and ride history asynchronously.
+* **Tech:** MongoDB (NoSQL), Worker Pool pattern.
+* **Go Fundamental:** Buffered Channels to handle write pressure, Goroutine pools.
+* **Learning Focus:** Non-blocking concurrent writes, channel capacity tuning.
+
+#### 2. Wallet Service  
+* **Design Pattern:** Distributed Locking + Rate Limiting
+* **Goal:** Handle payments and credits safely with ACID guarantees.
+* **Tech:** Redis (distributed lock) or Local Locking.
+* **Go Fundamental:** `sync.Mutex`, Race Conditions, Critical Sections.
+* **Learning Focus:** Preventing race conditions, lock contention optimization.
+
+#### 3. Analytics Service
+* **Design Pattern:** Time-Series Aggregation + Caching
+* **Goal:** Real-time metrics and business intelligence dashboards.
+* **Tech:** Time-series database (InfluxDB/TimescaleDB) or data warehouse.
+* **Go Fundamental:** Periodic goroutines, ticker-based aggregation.
+
+---
+
+## 🚀 Upcoming Features
+
+### 1. History Service (MongoDB)
+* **Goal:** Archive high-volume GPS logs and ride history.
+* **Tech:** MongoDB, Worker Pool pattern, Buffered Channels.
+* **Go Fundamentals:** Channel buffering, goroutine pools.
+
+### 2. Wallet Service  
+* **Goal:** Handle payments and credits safely.
+* **Tech:** Distributed Locking (Redis) or Local Locking.
+* **Go Fundamentals:** `sync.Mutex`, Race Condition prevention.
+
+### 3. Analytics Service
+* **Goal:** Real-time metrics and business intelligence.
+* **Tech:** Time-series database or data warehouse.
+
