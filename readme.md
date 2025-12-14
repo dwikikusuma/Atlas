@@ -1,6 +1,6 @@
 # 📡 Atlas Tracker Service
 
-**Status:** 🎯 Core Microservices Complete (Order, Tracker, Dispatch & Gateway)
+**Status:** 🎯 Core Microservices Complete | 🚧 Wallet Service In Progress  
 **Date:** December 13, 2025
 
 ## ✅ Implemented Services
@@ -120,6 +120,7 @@ graph TB
         ORDER["📋 Order Service:50052"]
         DISPATCH["🎯 Dispatch Service:50053"]
         TRACKER["📍 Tracker Service:50051"]
+        WALLET["🏦 Wallet Service:50054 (In Progress)"]
     end
     
     subgraph "Data Layer"
@@ -134,6 +135,7 @@ graph TB
     GATEWAY -->|gRPC| ORDER
     GATEWAY -->|gRPC| DISPATCH
     GATEWAY -->|gRPC| TRACKER
+    GATEWAY -->|gRPC| WALLET
     
     ORDER -->|Store/Query| POSTGRES
     ORDER -->|Consume| KAFKA
@@ -147,6 +149,54 @@ graph TB
 
 ---
 
+## 📚 Learning Roadmap - Design Patterns Checkpoint
+
+This project is structured as a learning journey through distributed systems patterns and Go fundamentals.
+
+### ✅ Completed
+
+| Service | Design Pattern | Go Fundamental |
+|---------|----------------|----------------|
+| **Tracker** | Event-Driven (Kafka) + Async Processing | Goroutines, Channels |
+| **Order** | Transactional Outbox + State Machine | Database Transactions, Concurrency |
+| **Dispatch** | Service Mesh Orchestration | gRPC, Client Connections |
+| **Gateway** | API Aggregation + Fan-Out Pattern | `sync.WaitGroup`, Parallel Queries |
+
+### 🚧 In Progress
+
+| Service | Design Pattern | Go Fundamental |
+|---------|----------------|----------------|
+| **Wallet** | **Ledger Architecture + ACID Transactions** | **`sync.Mutex` & Locking Strategies** |
+
+**Current Focus: Wallet Service Implementation**  
+We are currently building the "Central Bank" of Atlas. This service handles financial data using a **Double-Entry Ledger** approach to ensure accuracy and auditability.
+
+* **Purpose:** To manage user balances and transactions with strict consistency, ensuring no money is lost or double-spent.
+* **Key Implementations:**
+    * **Double-Entry Ledger:** Separating `wallets` (balance snapshot) and `transactions` (immutable append-only log).
+    * **ACID Transactions:** Ensuring that every balance update is atomically coupled with a transaction record insertion using Postgres transactions (`BEGIN`...`COMMIT`).
+    * **Concurrency Control:** Implementing **Row-Level Locking** in SQL (`UPDATE ... RETURNING`) and application-level locking using Go's `sync.Mutex` to prevent race conditions during high-concurrency payments.
+    * **gRPC API:** Implementing `CreditBalance`, `DebitBalance`, and `GetBalance`.
+
+### 🔮 Upcoming Features
+
+#### 1. History Service (MongoDB)
+
+* **Design Pattern:** Worker Pool + Buffered Channel
+* **Goal:** Archive high-volume GPS logs and ride history asynchronously.
+* **Tech:** MongoDB (NoSQL), Worker Pool pattern.
+* **Go Fundamental:** Buffered Channels to handle write pressure, Goroutine pools.
+* **Learning Focus:** Non-blocking concurrent writes, channel capacity tuning.
+
+#### 2. Analytics Service
+
+* **Design Pattern:** Time-Series Aggregation + Caching
+* **Goal:** Real-time metrics and business intelligence dashboards.
+* **Tech:** Time-series database (InfluxDB/TimescaleDB) or data warehouse.
+* **Go Fundamental:** Periodic goroutines, ticker-based aggregation.
+
+---
+
 ## 📦 Technology Stack
 
 | Component | Technology |
@@ -157,58 +207,3 @@ graph TB
 | **Geospatial Index** | Redis Geo |
 | **Message Queue** | Apache Kafka |
 | **Proto Compiler** | protoc (gRPC) |
-
----
-
-## 📚 Learning Roadmap - Design Patterns Checkpoint
-
-This project is structured as a learning journey through distributed systems patterns and Go fundamentals.
-
-### ✅ Completed
-| Service | Design Pattern | Go Fundamental |
-|---------|---|---|
-| **Tracker** | Event-Driven (Kafka) + Async Processing | Goroutines, Channels |
-| **Order** | Transactional Outbox + State Machine | Database Transactions, Concurrency |
-| **Dispatch** | Service Mesh Orchestration | gRPC, Client Connections |
-| **Gateway** | API Aggregation + Fan-Out Pattern | `sync.WaitGroup`, Parallel Queries |
-
-### 🚧 Upcoming
-
-#### 1. History Service (MongoDB)
-* **Design Pattern:** Worker Pool + Buffered Channel
-* **Goal:** Archive high-volume GPS logs and ride history asynchronously.
-* **Tech:** MongoDB (NoSQL), Worker Pool pattern.
-* **Go Fundamental:** Buffered Channels to handle write pressure, Goroutine pools.
-* **Learning Focus:** Non-blocking concurrent writes, channel capacity tuning.
-
-#### 2. Wallet Service  
-* **Design Pattern:** Distributed Locking + Rate Limiting
-* **Goal:** Handle payments and credits safely with ACID guarantees.
-* **Tech:** Redis (distributed lock) or Local Locking.
-* **Go Fundamental:** `sync.Mutex`, Race Conditions, Critical Sections.
-* **Learning Focus:** Preventing race conditions, lock contention optimization.
-
-#### 3. Analytics Service
-* **Design Pattern:** Time-Series Aggregation + Caching
-* **Goal:** Real-time metrics and business intelligence dashboards.
-* **Tech:** Time-series database (InfluxDB/TimescaleDB) or data warehouse.
-* **Go Fundamental:** Periodic goroutines, ticker-based aggregation.
-
----
-
-## 🚀 Upcoming Features
-
-### 1. History Service (MongoDB)
-* **Goal:** Archive high-volume GPS logs and ride history.
-* **Tech:** MongoDB, Worker Pool pattern, Buffered Channels.
-* **Go Fundamentals:** Channel buffering, goroutine pools.
-
-### 2. Wallet Service  
-* **Goal:** Handle payments and credits safely.
-* **Tech:** Distributed Locking (Redis) or Local Locking.
-* **Go Fundamentals:** `sync.Mutex`, Race Condition prevention.
-
-### 3. Analytics Service
-* **Goal:** Real-time metrics and business intelligence.
-* **Tech:** Time-series database or data warehouse.
-
