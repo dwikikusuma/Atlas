@@ -1,1 +1,23 @@
 syntax = "proto3";
+
+package wallet;
+
+option go_package = "github.com/dwikikusuma/atlas/pkg/pb/wallet";
+
+service WalletService {
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  rpc CreditBalance(CreditBalanceRequest) returns (BalanceResponse);
+  rpc DebitBalance(DebitBalanceRequest) returns (BalanceResponse);
+}
+
+message GetBalanceRequest { string user_id = 1; }
+message GetBalanceResponse { string user_id = 1; double balance = 2; }
+
+message CreditBalanceRequest { string user_id = 1; double amount = 2; }
+message DebitBalanceRequest { string user_id = 1; double amount = 2; }
+
+message BalanceResponse {
+  bool success = 1;
+  double new_balance = 2;
+  string message = 3;
+}
