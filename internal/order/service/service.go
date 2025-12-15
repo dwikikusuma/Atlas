@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/dwikikusuma/atlas/internal/order/db"
-	orderModel "github.com/dwikikusuma/atlas/internal/wallet/model"
 	"github.com/dwikikusuma/atlas/pkg/kafka"
+	orderModel "github.com/dwikikusuma/atlas/pkg/model"
 	"github.com/dwikikusuma/atlas/pkg/pb/order"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"

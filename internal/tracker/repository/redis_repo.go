@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/dwikikusuma/atlas/internal/tracker/domain"
-	"github.com/dwikikusuma/atlas/internal/tracker/model"
+	"github.com/dwikikusuma/atlas/pkg/model"
 	"github.com/redis/go-redis/v9"
 )
 

@@ -6,8 +6,8 @@ import (
 	"log"
 
 	"github.com/dwikikusuma/atlas/internal/tracker/domain"
-	"github.com/dwikikusuma/atlas/internal/tracker/model"
 	"github.com/dwikikusuma/atlas/pkg/kafka"
+	"github.com/dwikikusuma/atlas/pkg/model"
 )
 
 type IngestionWorker struct {

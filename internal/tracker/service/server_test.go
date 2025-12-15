@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/dwikikusuma/atlas/internal/tracker/model"
+	"github.com/dwikikusuma/atlas/pkg/model"
 	"github.com/dwikikusuma/atlas/pkg/pb/tracker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

@@ -3,7 +3,7 @@ package domain
 import (
 	"context"
 
-	"github.com/dwikikusuma/atlas/internal/tracker/model"
+	"github.com/dwikikusuma/atlas/pkg/model"
 )
 
 type LocationRepository interface {
