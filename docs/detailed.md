@@ -140,15 +140,15 @@ The platform implements multiple data flow patterns:
 ```go
 // Concurrent service calls using WaitGroup
 type CustomerHandler struct {
-order    order.OrderServiceClient
-dispatch dispatch.DispatchServiceClient
+    order    order.OrderServiceClient
+    dispatch dispatch.DispatchServiceClient
 }
 
 // Graceful JSON response handling
 func writeJSON(w http.ResponseWriter, status int, data any) {
-w.Header().Set("Content-Type", "application/json")
-w.WriteHeader(status)
-json.NewEncoder(w).Encode(data)
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(status)
+    json.NewEncoder(w).Encode(data)
 }
 ```
 
@@ -172,32 +172,32 @@ json.NewEncoder(w).Encode(data)
 **Write Path (Command)**:
 ```go
 func (s *Server) UpdateLocation(ctx context.Context, req *UpdateLocationRequest) {
-// Publish to Kafka for async processing
-event := model.LocationEvent{...}
-s.producer.Publish(ctx, "driver-gps", userId, eventBytes)
+    // Publish to Kafka for async processing
+    event := model.LocationEvent{...}
+    s.producer.Publish(ctx, "driver-gps", userId, eventBytes)
 }
 ```
 
 **Read Path (Query)**:
 ```go
 func (s *Server) GetNearbyDrivers(ctx context.Context, req *GetNearbyDriverRequest) {
-// Direct Redis query for low latency
-drivers := s.repo.GetNearbyDrivers(ctx, lat, lon, radius)
+    // Direct Redis query for low latency
+    drivers := s.repo.GetNearbyDrivers(ctx, lat, lon, radius)
 }
 ```
 
 **Worker (Background Processing)**:
 ```go
 func (w *IngestionWorker) Run(ctx context.Context) {
-for {
-msg := w.consumer.FetchMessage(ctx)
-event := unmarshal(msg.Value)
-
-// Persist to Redis with geospatial indexing
-w.repo.UpdatePosition(ctx, event.UserID, event.Lat, event.Lon)
-
-w.consumer.CommitMessages(ctx, msg)
-}
+    for {
+        msg := w.consumer.FetchMessage(ctx)
+        event := unmarshal(msg.Value)
+        
+        // Persist to Redis with geospatial indexing
+        w.repo.UpdatePosition(ctx, event.UserID, event.Lat, event.Lon)
+        
+        w.consumer.CommitMessages(ctx, msg)
+    }
 }
 ```
 
@@ -220,25 +220,25 @@ w.consumer.CommitMessages(ctx, msg)
 **Matching Algorithm**:
 ```go
 func (s *DispatchService) RequestRide(ctx context.Context, req *RequestRideRequest) {
-// 1. Query nearby drivers from Tracker
-drivers := s.trackerClient.GetNearbyDrivers(ctx, &tracker.GetNearbyDriverRequest{
-Latitude:  req.PickupLat,
-Longitude: req.PickupLong,
-Radius:    5.0, // 5km radius
-})
-
-// 2. Select closest available driver
-if len(drivers) > 0 {
-selectedDriver := drivers[0] // Already sorted by distance
-
-// 3. Publish RideDispatchedEvent to Kafka
-event := RideDispatchedEvent{
-RideID:   req.PassengerId,
-DriverID: selectedDriver.Id,
-...
-}
-s.producer.Publish(ctx, "ride-dispatch", event)
-}
+    // 1. Query nearby drivers from Tracker
+    drivers := s.trackerClient.GetNearbyDrivers(ctx, &tracker.GetNearbyDriverRequest{
+        Latitude:  req.PickupLat,
+        Longitude: req.PickupLong,
+        Radius:    5.0, // 5km radius
+    })
+    
+    // 2. Select closest available driver
+    if len(drivers) > 0 {
+        selectedDriver := drivers[0] // Already sorted by distance
+        
+        // 3. Publish RideDispatchedEvent to Kafka
+        event := RideDispatchedEvent{
+            RideID:   req.PassengerId,
+            DriverID: selectedDriver.Id,
+            ...
+        }
+        s.producer.Publish(ctx, "ride-dispatch", event)
+    }
 }
 ```
 
@@ -265,55 +265,55 @@ CREATED → MATCHED → STARTED → FINISHED
 ```go
 // Synchronous order creation
 func (s *Service) CreateOrder(ctx context.Context, req *CreateOrderRequest) {
-order := s.store.CreateOrder(ctx, db.CreateOrderParams{
-PassengerID: req.UserId,
-Status:      "CREATED",
-Price:       calculatePrice(req), // Haversine formula
-})
-return &CreateOrderResponse{OrderId: order.ID}
+    order := s.store.CreateOrder(ctx, db.CreateOrderParams{
+        PassengerID: req.UserId,
+        Status:      "CREATED",
+        Price:       calculatePrice(req), // Haversine formula
+    })
+    return &CreateOrderResponse{OrderId: order.ID}
 }
 
 // Asynchronous driver assignment
 type OrderWorker struct {
-consumer kafka.EventConsumer
-store    db.Querier
+    consumer kafka.EventConsumer
+    store    db.Querier
 }
 
 func (w *OrderWorker) Start(ctx context.Context) {
-for {
-msg := w.consumer.FetchMessage(ctx)
-event := unmarshal(msg.Value) // RideDispatchedEvent
-
-// Update order with assigned driver
-w.store.UpdateOrderDriver(ctx, db.UpdateOrderDriverParams{
-ID:       event.RideID,
-DriverID: event.DriverID,
-})
-
-w.consumer.CommitMessages(ctx, msg)
-}
+    for {
+        msg := w.consumer.FetchMessage(ctx)
+        event := unmarshal(msg.Value) // RideDispatchedEvent
+        
+        // Update order with assigned driver
+        w.store.UpdateOrderDriver(ctx, db.UpdateOrderDriverParams{
+            ID:       event.RideID,
+            DriverID: event.DriverID,
+        })
+        
+        w.consumer.CommitMessages(ctx, msg)
+    }
 }
 ```
 
 **Payment Flow (Async Decoupling)**:
 ```go
 func (s *Service) UpdateOrderStatus(ctx context.Context, req *UpdateOrderStatusRequest) {
-// Update ride status
-s.store.UpdateOrderStatus(ctx, req.OrderId, req.Status)
-
-// If ride finished, trigger payment asynchronously
-if req.Status == "FINISHED" {
-order := s.store.GetOrder(ctx, req.OrderId)
-
-debitEvent := DebitBalanceEvent{
-UserID:    order.PassengerID,
-Amount:    order.Price,
-Reference: order.ID,
-}
-
-// Publish to Kafka - don't block on payment
-s.producer.Publish(ctx, "wallet-transactions", debitEvent)
-}
+    // Update ride status
+    s.store.UpdateOrderStatus(ctx, req.OrderId, req.Status)
+    
+    // If ride finished, trigger payment asynchronously
+    if req.Status == "FINISHED" {
+        order := s.store.GetOrder(ctx, req.OrderId)
+        
+        debitEvent := DebitBalanceEvent{
+            UserID:    order.PassengerID,
+            Amount:    order.Price,
+            Reference: order.ID,
+        }
+        
+        // Publish to Kafka - don't block on payment
+        s.producer.Publish(ctx, "wallet-transactions", debitEvent)
+    }
 }
 ```
 
@@ -335,86 +335,86 @@ s.producer.Publish(ctx, "wallet-transactions", debitEvent)
 ```sql
 -- Snapshot table (current state)
 CREATE TABLE wallets (
-                         user_id VARCHAR(50) PRIMARY KEY,
-                         balance DOUBLE PRECISION NOT NULL,
-                         updated_at TIMESTAMPTZ NOT NULL
+    user_id VARCHAR(50) PRIMARY KEY,
+    balance DOUBLE PRECISION NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
 );
 
 -- Append-only log (audit trail)
 CREATE TABLE transactions (
-                              id UUID PRIMARY KEY,
-                              wallet_id VARCHAR(50) REFERENCES wallets(user_id),
-                              amount DOUBLE PRECISION NOT NULL, -- negative = debit
-                              description TEXT,
-                              reference_id VARCHAR(50), -- links to order
-                              created_at TIMESTAMPTZ NOT NULL
+    id UUID PRIMARY KEY,
+    wallet_id VARCHAR(50) REFERENCES wallets(user_id),
+    amount DOUBLE PRECISION NOT NULL, -- negative = debit
+    description TEXT,
+    reference_id VARCHAR(50), -- links to order
+    created_at TIMESTAMPTZ NOT NULL
 );
 ```
 
 **ACID Transaction Implementation**:
 ```go
 func (s *PostgresWalletService) DebitBalance(ctx context.Context, req *DebitBalanceRequest) {
-var newBalance float64
-
-// Start transaction
-err := s.execTx(ctx, func(q *db.Queries) error {
-// 1. Verify wallet exists
-wallet := q.GetWallet(ctx, req.UserId)
-
-// 2. Insert transaction record (audit trail)
-q.CreateTransaction(ctx, db.CreateTransactionParams{
-WalletID:    req.UserId,
-Amount:      -req.Amount, // Negative for debit
-Description: "DEBIT",
-ReferenceID: req.ReferenceId,
-})
-
-// 3. Update balance atomically with row-level lock
-wallet = q.AddWalletBalance(ctx, db.AddWalletBalanceParams{
-UserID: req.UserId,
-Amount: -req.Amount,
-})
-
-newBalance = wallet.Balance
-return nil // Commit
-})
-
-return &BalanceResponse{NewBalance: newBalance}
+    var newBalance float64
+    
+    // Start transaction
+    err := s.execTx(ctx, func(q *db.Queries) error {
+        // 1. Verify wallet exists
+        wallet := q.GetWallet(ctx, req.UserId)
+        
+        // 2. Insert transaction record (audit trail)
+        q.CreateTransaction(ctx, db.CreateTransactionParams{
+            WalletID:    req.UserId,
+            Amount:      -req.Amount, // Negative for debit
+            Description: "DEBIT",
+            ReferenceID: req.ReferenceId,
+        })
+        
+        // 3. Update balance atomically with row-level lock
+        wallet = q.AddWalletBalance(ctx, db.AddWalletBalanceParams{
+            UserID: req.UserId,
+            Amount: -req.Amount,
+        })
+        
+        newBalance = wallet.Balance
+        return nil // Commit
+    })
+    
+    return &BalanceResponse{NewBalance: newBalance}
 }
 ```
 
 **Payment Worker (Kafka Consumer)**:
 ```go
 func (w *WalletWorker) Start(ctx context.Context) {
-for {
-msg := w.consumer.FetchMessage(ctx)
-event := unmarshal(msg.Value) // DebitBalanceEvent
-
-// Validate event data
-if event.UserID == "" || event.Amount <= 0 {
-// Poison pill protection - commit bad message
-w.consumer.CommitMessages(ctx, msg)
-continue
-}
-
-// Process payment with timeout
-debitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-_, err := w.service.DebitBalance(debitCtx, &wallet.DebitBalanceRequest{
-UserId:      event.UserID,
-Amount:      event.Amount,
-ReferenceId: event.Reference,
-})
-cancel()
-
-if err != nil {
-// Don't commit - allow retry on restart
-log.Printf("Payment failed: %v", err)
-continue
-}
-
-// Success - commit offset
-w.consumer.CommitMessages(ctx, msg)
-}
+    for {
+        msg := w.consumer.FetchMessage(ctx)
+        event := unmarshal(msg.Value) // DebitBalanceEvent
+        
+        // Validate event data
+        if event.UserID == "" || event.Amount <= 0 {
+            // Poison pill protection - commit bad message
+            w.consumer.CommitMessages(ctx, msg)
+            continue
+        }
+        
+        // Process payment with timeout
+        debitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+        _, err := w.service.DebitBalance(debitCtx, &wallet.DebitBalanceRequest{
+            UserId:      event.UserID,
+            Amount:      event.Amount,
+            ReferenceId: event.Reference,
+        })
+        cancel()
+        
+        if err != nil {
+            // Don't commit - allow retry on restart
+            log.Printf("Payment failed: %v", err)
+            continue
+        }
+        
+        // Success - commit offset
+        w.consumer.CommitMessages(ctx, msg)
+    }
 }
 ```
 
@@ -588,49 +588,49 @@ Every service implements proper shutdown handling:
 
 ```go
 func main() {
-ctx, cancel := context.WithCancel(context.Background())
-defer cancel()
-
-var wg sync.WaitGroup
-
-// Start worker
-wg.Add(1)
-go func() {
-defer wg.Done()
-worker.Start(ctx) // Respects ctx.Done()
-}()
-
-// Start gRPC server
-wg.Add(1)
-go func() {
-defer wg.Done()
-grpcServer.Serve(listener)
-}()
-
-// Wait for SIGTERM/SIGINT
-quit := make(chan os.Signal, 1)
-signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-<-quit
-
-// Cancel context (stops workers)
-cancel()
-
-// Graceful gRPC shutdown with timeout
-stopped := make(chan struct{})
-go func() {
-grpcServer.GracefulStop()
-close(stopped)
-}()
-
-select {
-case <-stopped:
-log.Println("✅ Shutdown complete")
-case <-time.After(10 * time.Second):
-grpcServer.Stop() // Force stop
-}
-
-// Wait for all goroutines
-wg.Wait()
+    ctx, cancel := context.WithCancel(context.Background())
+    defer cancel()
+    
+    var wg sync.WaitGroup
+    
+    // Start worker
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        worker.Start(ctx) // Respects ctx.Done()
+    }()
+    
+    // Start gRPC server
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        grpcServer.Serve(listener)
+    }()
+    
+    // Wait for SIGTERM/SIGINT
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+    <-quit
+    
+    // Cancel context (stops workers)
+    cancel()
+    
+    // Graceful gRPC shutdown with timeout
+    stopped := make(chan struct{})
+    go func() {
+        grpcServer.GracefulStop()
+        close(stopped)
+    }()
+    
+    select {
+    case <-stopped:
+        log.Println("✅ Shutdown complete")
+    case <-time.After(10 * time.Second):
+        grpcServer.Stop() // Force stop
+    }
+    
+    // Wait for all goroutines
+    wg.Wait()
 }
 ```
 
@@ -644,21 +644,21 @@ wg.Wait()
 **At-Least-Once Delivery**:
 ```go
 for {
-msg := consumer.FetchMessage(ctx)
-
-// Process message
-err := processMessage(msg)
-
-if isPermanentError(err) {
-// Poison pill - commit to skip
-consumer.CommitMessages(ctx, msg)
-} else if err != nil {
-// Transient error - don't commit, will retry
-continue
-}
-
-// Success - commit offset
-consumer.CommitMessages(ctx, msg)
+    msg := consumer.FetchMessage(ctx)
+    
+    // Process message
+    err := processMessage(msg)
+    
+    if isPermanentError(err) {
+        // Poison pill - commit to skip
+        consumer.CommitMessages(ctx, msg)
+    } else if err != nil {
+        // Transient error - don't commit, will retry
+        continue
+    }
+    
+    // Success - commit offset
+    consumer.CommitMessages(ctx, msg)
 }
 ```
 
@@ -666,20 +666,20 @@ consumer.CommitMessages(ctx, msg)
 ```go
 // Invalid JSON - will never succeed
 if json.Unmarshal(msg.Value, &event) != nil {
-consumer.CommitMessages(ctx, msg) // Skip it
-continue
+    consumer.CommitMessages(ctx, msg) // Skip it
+    continue
 }
 
 // Invalid data - will never succeed
 if event.Amount <= 0 {
-consumer.CommitMessages(ctx, msg) // Skip it
-continue
+    consumer.CommitMessages(ctx, msg) // Skip it
+    continue
 }
 
 // Database timeout - might succeed later
 if isDatabaseError(err) {
-// DON'T commit - allow retry
-continue
+    // DON'T commit - allow retry
+    continue
 }
 ```
 
@@ -688,24 +688,24 @@ continue
 ```go
 // Worker context (respects shutdown)
 func (w *WalletWorker) Start(ctx context.Context) {
-for {
-select {
-case <-ctx.Done():
-return // Clean shutdown
-default:
-}
-
-msg := w.consumer.FetchMessage(ctx)
-
-// Operation context (independent timeout)
-opCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-_, err := w.service.DebitBalance(opCtx, &req)
-cancel() // Always cleanup
-
-if ctx.Err() != nil {
-return // Parent cancelled during operation
-}
-}
+    for {
+        select {
+        case <-ctx.Done():
+            return // Clean shutdown
+        default:
+        }
+        
+        msg := w.consumer.FetchMessage(ctx)
+        
+        // Operation context (independent timeout)
+        opCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+        _, err := w.service.DebitBalance(opCtx, &req)
+        cancel() // Always cleanup
+        
+        if ctx.Err() != nil {
+            return // Parent cancelled during operation
+        }
+    }
 }
 ```
 
@@ -714,22 +714,22 @@ return // Parent cancelled during operation
 ```go
 // Every financial operation creates TWO entries
 func DebitBalance(amount float64) error {
-tx.Begin()
-
-// Entry 1: Transaction log (immutable audit trail)
-tx.CreateTransaction(TransactionParams{
-Amount:      -amount,
-Description: "DEBIT",
-ReferenceID: orderID,
-})
-
-// Entry 2: Balance update (mutable snapshot)
-tx.UpdateBalance(BalanceParams{
-UserID: userID,
-Amount: -amount, // balance = balance - amount
-})
-
-tx.Commit()
+    tx.Begin()
+    
+    // Entry 1: Transaction log (immutable audit trail)
+    tx.CreateTransaction(TransactionParams{
+        Amount:      -amount,
+        Description: "DEBIT",
+        ReferenceID: orderID,
+    })
+    
+    // Entry 2: Balance update (mutable snapshot)
+    tx.UpdateBalance(BalanceParams{
+        UserID: userID,
+        Amount: -amount, // balance = balance - amount
+    })
+    
+    tx.Commit()
 }
 ```
 
