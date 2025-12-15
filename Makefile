@@ -91,7 +91,8 @@ proto:
 		--go-grpc_out=pkg/pb --go-grpc_opt=paths=source_relative \
 		tracker/tracker.proto \
 		order/order.proto \
-		dispatch/dispatch.proto
+		dispatch/dispatch.proto \
+		wallet/wallet.proto
 		@echo "✅ Proto Generation Complete!"
 #
 #		wallet/wallet.proto \

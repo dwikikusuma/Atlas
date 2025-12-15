@@ -1,4 +1,4 @@
--- internal/wallet/db/migration/000001_init_wallet.up.sql
+-- internal/wallet/db/migration/000001_init_schema.up.sql
 
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

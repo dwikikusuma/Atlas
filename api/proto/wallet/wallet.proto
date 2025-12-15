@@ -10,11 +10,26 @@ service WalletService {
   rpc DebitBalance(DebitBalanceRequest) returns (BalanceResponse);
 }
 
-message GetBalanceRequest { string user_id = 1; }
-message GetBalanceResponse { string user_id = 1; double balance = 2; }
+message GetBalanceRequest {
+  string user_id = 1;
+}
 
-message CreditBalanceRequest { string user_id = 1; double amount = 2; }
-message DebitBalanceRequest { string user_id = 1; double amount = 2; }
+message GetBalanceResponse {
+  string user_id = 1;
+  double balance = 2;
+}
+
+message CreditBalanceRequest {
+  string user_id = 1;
+  double amount = 2;
+  string reference_id = 3; // e.g. "Order-123"
+}
+
+message DebitBalanceRequest {
+  string user_id = 1;
+  double amount = 2;
+  string reference_id = 3; // e.g. "Order-123"
+}
 
 message BalanceResponse {
   bool success = 1;
