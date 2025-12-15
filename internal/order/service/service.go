@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"math"
 	"time"
 
 	"github.com/dwikikusuma/atlas/internal/order/db"
+	orderModel "github.com/dwikikusuma/atlas/internal/wallet/model"
+	"github.com/dwikikusuma/atlas/pkg/kafka"
 	"github.com/dwikikusuma/atlas/pkg/pb/order"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
@@ -14,12 +17,14 @@ import (
 
 type Service struct {
 	order.UnimplementedOrderServiceServer
-	store db.Querier
+	store    db.Querier
+	producer *kafka.Producer
 }
 
-func NewOrderService(store db.Querier) *Service {
+func NewOrderService(store db.Querier, producer *kafka.Producer) *Service {
 	return &Service{
-		store: store,
+		store:    store,
+		producer: producer,
 	}
 }
 
@@ -101,11 +106,42 @@ func (s *Service) UpdateOrderStatus(ctx context.Context, req *order.UpdateOrderS
 	if err := s.store.UpdateOrderStatus(dbCtx, args); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	if req.Status == "FINISHED" {
+		if err := s.ProcessPayment(dbCtx, orderID); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to process payment: %v", err)
+		}
+	}
+
 	return &order.UpdateOrderStatusResponse{
 		OrderId:   orderID.String(),
 		Status:    req.Status,
 		UpdatedAt: time.Now().UTC().String(),
 	}, nil
+}
+
+func (s *Service) ProcessPayment(dbCtx context.Context, orderID pgtype.UUID) error {
+	orderDetail, err := s.store.GetOrder(dbCtx, orderID)
+	if err != nil {
+		return err
+	}
+
+	orderString := orderID.String()
+	debitEvent := orderModel.DebitBalanceEvent{
+		Amount:    orderDetail.Price,
+		UserID:    orderDetail.PassengerID,
+		Reference: orderString,
+	}
+
+	debitByte, err := json.Marshal(&debitEvent)
+	if err != nil {
+		return err
+	}
+
+	if err = s.producer.Publish(dbCtx, "wallet-transactions", orderString, debitByte); err != nil {
+		return err
+	}
+	return nil
 }
 
 func calculatePrice(lat1, lon1, lat2, lon2 float64) float64 {

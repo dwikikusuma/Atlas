@@ -42,8 +42,11 @@ func main() {
 	defer connPool.Close()
 	log.Println("✅ Connected to Postgres")
 
+	producer := kafka.NewProducer([]string{kafkaBroker})
+	log.Println("✅ Connecting to Producer...")
+
 	sqlcDB := db.New(connPool)
-	svc := service.NewOrderService(sqlcDB)
+	svc := service.NewOrderService(sqlcDB, producer)
 
 	grpcServer := grpc.NewServer()
 	order.RegisterOrderServiceServer(grpcServer, svc)
