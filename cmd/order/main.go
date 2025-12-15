@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sync"
 
 	"github.com/dwikikusuma/atlas/internal/order/db"
 	"github.com/dwikikusuma/atlas/internal/order/service"
@@ -26,7 +27,8 @@ const (
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	connPool, err := connectDB(ctx)
 	if err != nil {
@@ -37,12 +39,23 @@ func main() {
 	producer := kafka.NewProducer([]string{kafkaBroker})
 	log.Println("✅ Connecting to Producer...")
 
+	var wg sync.WaitGroup
+
 	sqlcDB := db.New(connPool)
 	svc := service.NewOrderService(sqlcDB, producer)
-	startConsumer(ctx, sqlcDB)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		startConsumer(ctx, sqlcDB)
+	}()
 
 	grpcServer := grpc.NewServer()
-	startGRPCServer(grpcServer, svc)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		startGRPCServer(grpcServer, svc)
+	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
@@ -77,11 +90,10 @@ func connectDB(ctx context.Context) (*pgxpool.Pool, error) {
 func startConsumer(ctx context.Context, sqlcDB *db.Queries) {
 	dispatchConsumer := kafka.NewConsumer([]string{kafkaBroker}, dispatchGroup, dispatchTopic)
 	setDriverConsumer := service.NewOrderWorker(dispatchConsumer, sqlcDB)
-	go func() {
-		if err := setDriverConsumer.Start(ctx); err != nil {
-			log.Fatalf("❌ order worker failed: %v", err)
-		}
-	}()
+	if err := setDriverConsumer.Start(ctx); err != nil {
+		log.Fatalf("❌ order worker failed: %v", err)
+	}
+	log.Println("✅ Order worker started")
 }
 
 func startGRPCServer(grpcServer *grpc.Server, svc *service.Service) {
@@ -93,11 +105,9 @@ func startGRPCServer(grpcServer *grpc.Server, svc *service.Service) {
 	if err != nil {
 		log.Fatalf("❌ cannot create listener: %v", err)
 	}
-	go func() {
-		log.Printf("🚀 Order gRPC server listening on %s", listener.Addr().String())
-		err = grpcServer.Serve(listener)
-		if err != nil {
-			log.Fatalf("❌ cannot start grpc server: %v", err)
-		}
-	}()
+	log.Printf("🚀 Order gRPC server listening on %s", listener.Addr().String())
+	err = grpcServer.Serve(listener)
+	if err != nil {
+		log.Fatalf("❌ cannot start grpc server: %v", err)
+	}
 }

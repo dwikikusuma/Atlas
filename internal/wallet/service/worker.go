@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/dwikikusuma/atlas/internal/wallet/model"
 	"github.com/dwikikusuma/atlas/pkg/kafka"
+	"github.com/dwikikusuma/atlas/pkg/model"
 	"github.com/dwikikusuma/atlas/pkg/pb/wallet"
 )
 
@@ -77,8 +77,10 @@ func (w *WalletWorker) Start(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return nil
 			}
-			log.Printf("❌ Failed to debit balance for userID=%s, ref=%s: %v",
-				event.UserID, event.Reference, err)
+			log.Printf("❌ Failed to debit balance for userID=%s, ref=%s: %v", event.UserID, event.Reference, err)
+			if err = w.consumer.CommitMessages(ctx, m); err != nil {
+				log.Printf("⚠️ Failed to commit message for key=%s: %v", string(m.Key), err)
+			}
 			continue
 		}
 

@@ -122,11 +122,9 @@ func startGRPCServer(grpcServer *grpc.Server, svc wallet.WalletServiceServer) {
 func startConsumer(ctx context.Context, svc service.WalletService) {
 	consumer := kafka.NewConsumer([]string{kafkaBroker}, "wallet-group", "wallet-transactions")
 	worker := service.NewWalletWorker(consumer, svc)
-	go func() {
-		if err := worker.Start(ctx); err != nil {
-			log.Printf("❌ Wallet worker stopped with error: %v", err)
-		} else {
-			log.Println("✅ Wallet worker stopped gracefully")
-		}
-	}()
+	if err := worker.Start(ctx); err != nil {
+		log.Printf("❌ Wallet worker stopped with error: %v", err)
+	} else {
+		log.Println("✅ Wallet worker stopped gracefully")
+	}
 }
