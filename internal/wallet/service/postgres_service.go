@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"log"
-	"sync"
 
 	"github.com/dwikikusuma/atlas/internal/wallet/db"
 	"github.com/dwikikusuma/atlas/pkg/pb/wallet"
@@ -18,7 +17,6 @@ import (
 type PostgresWalletService struct {
 	wallet.UnimplementedWalletServiceServer
 	pool *pgxpool.Pool
-	mux  sync.Mutex
 }
 
 func NewPostgresWalletService(db *pgxpool.Pool) *PostgresWalletService {
@@ -66,9 +64,6 @@ func (s *PostgresWalletService) GetBalance(ctx context.Context, req *wallet.GetB
 }
 
 func (s *PostgresWalletService) CreditBalance(ctx context.Context, req *wallet.CreditBalanceRequest) (*wallet.BalanceResponse, error) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
 	var balance float64
 
 	q := db.New(s.pool)
@@ -114,9 +109,6 @@ func (s *PostgresWalletService) CreditBalance(ctx context.Context, req *wallet.C
 }
 
 func (s *PostgresWalletService) DebitBalance(ctx context.Context, req *wallet.DebitBalanceRequest) (*wallet.BalanceResponse, error) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
 	var balance float64
 
 	q := db.New(s.pool)
