@@ -10,6 +10,7 @@ import (
 	"github.com/dwikikusuma/atlas/pkg/kafka"
 	orderModel "github.com/dwikikusuma/atlas/pkg/model"
 	"github.com/dwikikusuma/atlas/pkg/pb/order"
+	wallet "github.com/dwikikusuma/atlas/pkg/pb/wallet"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -17,18 +18,29 @@ import (
 
 type Service struct {
 	order.UnimplementedOrderServiceServer
-	store    db.Querier
-	producer *kafka.Producer
+	store        db.Querier
+	producer     *kafka.Producer
+	walletClient wallet.WalletServiceClient
 }
 
-func NewOrderService(store db.Querier, producer *kafka.Producer) *Service {
+func NewOrderService(store db.Querier, producer *kafka.Producer, walletClient wallet.WalletServiceClient) *Service {
 	return &Service{
-		store:    store,
-		producer: producer,
+		store:        store,
+		producer:     producer,
+		walletClient: walletClient,
 	}
 }
 
 func (s *Service) CreateOrder(ctx context.Context, req *order.CreateOrderRequest) (*order.CreateOrderResponse, error) {
+	price := calculatePrice(req.PickupLat, req.PickupLong, req.DropoffLat, req.DropoffLong)
+	balance, err := s.walletClient.GetBalance(ctx, &wallet.GetBalanceRequest{UserId: req.UserId})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get user balance: %v", err)
+	}
+
+	if balance.Balance < price {
+		return nil, status.Errorf(codes.FailedPrecondition, "insufficient balance: %v", balance.Balance)
+	}
 
 	createOrderParams := db.CreateOrderParams{
 		PassengerID: req.UserId,
@@ -37,7 +49,7 @@ func (s *Service) CreateOrder(ctx context.Context, req *order.CreateOrderRequest
 		DropoffLat:  req.DropoffLat,
 		DropoffLong: req.DropoffLong,
 		Status:      "CREATED",
-		Price:       calculatePrice(req.PickupLat, req.PickupLong, req.DropoffLat, req.DropoffLong),
+		Price:       price,
 	}
 
 	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)

@@ -13,8 +13,10 @@ import (
 	"github.com/dwikikusuma/atlas/pkg/database"
 	"github.com/dwikikusuma/atlas/pkg/kafka"
 	"github.com/dwikikusuma/atlas/pkg/pb/order"
+	wallet "github.com/dwikikusuma/atlas/pkg/pb/wallet"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -24,6 +26,7 @@ const (
 	kafkaBroker   = "localhost:9092"
 	dispatchTopic = "ride-dispatch"
 	dispatchGroup = "order-service-group"
+	wallerPort    = ":50054"
 )
 
 func main() {
@@ -39,10 +42,16 @@ func main() {
 	producer := kafka.NewProducer([]string{kafkaBroker})
 	log.Println("✅ Connecting to Producer...")
 
+	walletConn, err := grpc.NewClient(wallerPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("❌ cannot connect to Wallet Service: %v", err)
+	}
+	walletClient := wallet.NewWalletServiceClient(walletConn)
+
 	var wg sync.WaitGroup
 
 	sqlcDB := db.New(connPool)
-	svc := service.NewOrderService(sqlcDB, producer)
+	svc := service.NewOrderService(sqlcDB, producer, walletClient)
 
 	wg.Add(1)
 	go func() {
